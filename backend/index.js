@@ -8,6 +8,7 @@ const teamRoutes = require("./routes/teamRoutes");
 const userRoutes = require("./routes/userRoutes");
 const equipmentRoutes = require("./routes/equipmentRoutes");
 const requestRoutes = require("./routes/requestRoutes");
+const adminRoutes = require("./routes/adminRoutes");
 
 
 
@@ -26,6 +27,7 @@ app.use("/api/teams", teamRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/equipment", equipmentRoutes);
 app.use("/api/requests", requestRoutes);
+app.use("/api/admin", adminRoutes);
 
 const { initDB } = require("./models");
 initDB();

@@ -33,35 +33,41 @@ exports.addTeamMember = (req, res) => {
         return res.status(400).json({ message: "Team ID and User ID are required" });
     }
 
-    // 2. LOGIC CHECK: If trying to add a Manager, check if one already exists
-    if (is_manager) {
-        const checkManagerSql = "SELECT * FROM team_members WHERE team_id = ? AND team_manager = 1";
+    const managerRole = is_manager ? 1 : 0;
 
-        db.query(checkManagerSql, [team_id], (err, results) => {
-            if (err) return res.status(500).json({ message: "Database error", error: err });
+    // Check if the user is already a member
+    const checkMemberSql = "SELECT * FROM team_members WHERE team_id = ? AND user_id = ?";
 
-            if (results.length > 0) {
-                return res.status(400).json({
-                    message: "Operation Failed: This team already has a Manager assigned."
+    db.query(checkMemberSql, [team_id, user_id], (err, results) => {
+        if (err) return res.status(500).json({ message: "Database error", error: err });
+
+        if (results.length > 0) {
+            // Update existing member role
+            const updateSql = "UPDATE team_members SET team_manager = ? WHERE team_id = ? AND user_id = ?";
+            db.query(updateSql, [managerRole, team_id, user_id], (err, result) => {
+                if (err) return res.status(500).json({ message: "Database error", error: err });
+                return res.status(200).json({ message: "Member role updated", role: managerRole ? "Manager" : "Technician" });
+            });
+        } else {
+            // If new member and is manager, demote existing manager first
+            if (managerRole) {
+                const demoteSql = "UPDATE team_members SET team_manager = 0 WHERE team_id = ? AND team_manager = 1";
+                db.query(demoteSql, [team_id], (err) => {
+                    if (err) return res.status(500).json({ message: "Database error", error: err });
+                    // proceed to insert after demotion
+                    insertMember();
                 });
+            } else {
+                insertMember();
             }
+        }
+    });
 
-            // If no manager exists, proceed to insert
-            insertMember();
-        });
-    } else {
-        // If adding a normal technician, skip the check
-        insertMember();
-    }
-
-    // Helper function to perform the actual insert
     function insertMember() {
         const sql = `
             INSERT INTO team_members (team_id, user_id, team_manager) 
             VALUES (?, ?, ?)
         `;
-
-        const managerRole = is_manager ? 1 : 0;
 
         db.query(sql, [team_id, user_id, managerRole], (err, result) => {
             if (err) {

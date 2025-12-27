@@ -1,6 +1,7 @@
 // --- 1. Imports ---
 const equipmentCategory = require("./equipment-category");
 const user = require("./user");
+const passwordReset = require("./password-reset");
 const equipment = require("./equipment");
 const maintenanceRequest = require("./maintenance-request");
 const maintenanceTeam = require("./maintenance-team");
@@ -32,6 +33,9 @@ const initDB = async () => {
         // Dependency Level 1: Independent Tables
         await runQuery(user, "Users");
         await runQuery(maintenanceTeam, "Maintenance Team");
+
+        // Password reset table depends on users
+        await runQuery(passwordReset, "Password Resets");
 
         // Dependency Level 2: Depends on Users/Teams
         await runQuery(teamMembers, "Team Members");

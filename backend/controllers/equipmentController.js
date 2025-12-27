@@ -43,6 +43,7 @@ exports.createCategory = (req, res) => {
 
 exports.addEquipment = (req, res) => {
     // 1. Accept new fields matching your updated schema
+    console.log(req.body);
     const { equipment_name, category_id, department, user_id, serial_number, location } = req.body;
 
     // 2. Validate required fields
@@ -111,5 +112,31 @@ exports.getAutoFillDetails = (req, res) => {
 
         // Return the first (and only) result
         res.status(200).json(results[0]);
+    });
+};
+
+// GET /api/equipment/categories
+exports.getCategories = (req, res) => {
+    const sql = `SELECT ec.*, mt.team_name, u.user_id as technician_id, u.name as technician_name
+                 FROM equipment_category ec
+                 JOIN maintenance_team mt ON ec.team_id = mt.team_id
+                 LEFT JOIN users u ON ec.technician_id = u.user_id`;
+
+    db.query(sql, (err, results) => {
+        if (err) return res.status(500).json({ message: "Database error", error: err });
+        res.status(200).json(results);
+    });
+};
+
+// GET /api/equipment
+exports.getEquipment = (req, res) => {
+    const sql = `SELECT e.*, ec.category_name, u.name as owner_name
+                 FROM equipment e
+                 JOIN equipment_category ec ON e.category_id = ec.category_id
+                 LEFT JOIN users u ON e.user_id = u.user_id`;
+
+    db.query(sql, (err, results) => {
+        if (err) return res.status(500).json({ message: "Database error", error: err });
+        res.status(200).json(results);
     });
 };

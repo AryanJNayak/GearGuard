@@ -5,21 +5,16 @@ const { verifyToken, isAdmin } = require("../middlewares/authMiddleware");
 
 // Route: POST /api/teams
 // Flow: verifyToken (Check Login) -> isAdmin (Check Role) -> createTeam (Do Logic)
-// router.post("/", verifyToken, isAdmin, createTeam);
-router.post("/", createTeam);
-// router.post("/add-member", verifyToken, isAdmin, addTeamMember);
-router.post("/add-member", addTeamMember);
+router.post("/", verifyToken, isAdmin, createTeam);
+router.post("/add-member", verifyToken, isAdmin, addTeamMember);
 
 
-// GET /api/teams - See all teams
-// router.get("/", verifyToken, getAllTeams);
-router.get("/", getAllTeams);
+// GET /api/teams - See all teams (protected)
+router.get("/", verifyToken, getAllTeams);
 
-// GET /api/teams/members - See who is in which team
-// router.get("/members", verifyToken, getAllMembers);
-router.get("/members", getAllMembers);
+// GET /api/teams/members - See who is in which team (protected)
+router.get("/members", verifyToken, getAllMembers);
 
-// router.get("/members/:teamId", verifyToken, getMembersByTeamId);
-router.get("/members/:teamId", getMembersByTeamId);
+router.get("/members/:teamId", verifyToken, getMembersByTeamId);
 
 module.exports = router;
