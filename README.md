@@ -55,4 +55,4 @@ name: aryan
 email: aryannayak1509@gmail.com
 
 name: Himanshu 
-email: Himanshhimanshuprajapati4695@gmail.com
+email: himanshuprajapati4695@gmail.com
