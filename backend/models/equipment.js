@@ -2,7 +2,6 @@
 
 id, equipment_name, category, emp_name
 
-
 id -> equipment_category & maintanence_team
 */
 
@@ -23,18 +22,25 @@ const createEquipmentTable = `
 CREATE TABLE IF NOT EXISTS equipment (
     equipment_id INT AUTO_INCREMENT PRIMARY KEY,
     equipment_name VARCHAR(100) NOT NULL,
-    
+
     -- Foreign Key linking to the equipment_category table
     category_id INT NOT NULL,
-    
-    -- Owner/Employee responsible for the asset
-    employee_name VARCHAR(100),
+
+    -- NEW: Department (e.g., "Production", "HR", "Sales")
+    department VARCHAR(100),
+
+    -- NEW: Replaces 'employee_name'. Links to a specific registered user.
+    user_id INT,
 
     serial_number VARCHAR(100) UNIQUE,
-    location VARCHAR(100), 
+    location VARCHAR(100),
 
+    -- Constraints
     FOREIGN KEY (category_id) REFERENCES equipment_category(category_id)
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON DELETE SET NULL
 );
 `;
 

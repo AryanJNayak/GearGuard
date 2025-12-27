@@ -3,7 +3,6 @@ equpiment * equipment-category +
 
 schedule_date, duration, priority, 
 */
-const db = require("../config/db-connect");
 
 /*
   Requirements:
@@ -13,6 +12,7 @@ const db = require("../config/db-connect");
   4. request_type (Corrective vs Preventive - from PDF)
   5. status (New, In Progress, Repaired, Scrap - from PDF)
 */
+const db = require("../config/db-connect");
 
 const createMaintenanceRequestTable = `
 CREATE TABLE IF NOT EXISTS maintenance_request (
@@ -20,10 +20,13 @@ CREATE TABLE IF NOT EXISTS maintenance_request (
     
     -- Core Links
     equipment_id INT NOT NULL,
-    technician_id INT, -- Nullable initially, assigned later by Manager/Self
+    technician_id INT, 
+    
+    -- NEW: Track who created the ticket
+    created_by INT NOT NULL, 
 
     -- Request Details
-    subject VARCHAR(255) NOT NULL, -- e.g., "Leaking Oil" [cite: 31]
+    subject VARCHAR(255) NOT NULL, 
     description TEXT,
     priority ENUM('Low', 'Medium', 'High', 'Critical') DEFAULT 'Medium',
     
@@ -32,8 +35,7 @@ CREATE TABLE IF NOT EXISTS maintenance_request (
     status ENUM('New', 'In Progress', 'Repaired', 'Scrap') DEFAULT 'New',
     
     schedule_date DATE,
-    duration FLOAT DEFAULT 0.0, -- Hours spent on repair 
-    
+    duration FLOAT DEFAULT 0.0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     -- Foreign Keys
@@ -41,10 +43,12 @@ CREATE TABLE IF NOT EXISTS maintenance_request (
         ON DELETE CASCADE,
 
     FOREIGN KEY (technician_id) REFERENCES users(user_id)
-        ON DELETE SET NULL
+        ON DELETE SET NULL,
+
+    -- NEW: Link created_by to users
+    FOREIGN KEY (created_by) REFERENCES users(user_id)
+        ON DELETE CASCADE
 );
 `;
-
-
 
 module.exports = createMaintenanceRequestTable;

@@ -49,7 +49,7 @@ const initDB = async () => {
     } catch (error) {
         console.error("⚠️ Database initialization stopped due to error.");
     } finally {
-        db.end(); // Close connection when done
+        // db.end(); // Close connection when done
     }
 };
 

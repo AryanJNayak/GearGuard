@@ -29,9 +29,9 @@ This project "GearGuard: The Ultimate Maintenance Tracker" is part of Odoo X Ada
 2. Asset Management
   - equipment_category: The "Brain" of the auto-assignment logic.
 
-  > It links a category (e.g., "Printers") to a specific Maintenance Team (e.g., "IT Support").
+  - It links a category (e.g., "Printers") to a specific Maintenance Team (e.g., "IT Support").
 
-  > It ensures that any equipment created under this category is automatically routed to the correct team.
+  - It ensures that any equipment created under this category is automatically routed to the correct team.
 
   - equipment: The physical assets. Contains details like Name, Serial Number, and links to the equipment_category.
 
