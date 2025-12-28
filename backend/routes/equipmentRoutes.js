@@ -1,16 +1,17 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const { createCategory, addEquipment, getAutoFillDetails, getCategories, getEquipment } = require("../controllers/equipmentController");
-const { verifyToken, isAdmin } = require("../middlewares/authMiddleware");
+const equipmentController = require('../controllers/equipmentController');
+const { verifyToken, isAdmin } = require('../middlewares/authMiddleware');
 
-// Route: POST /api/equipment/categories
-router.post("/categories", verifyToken, isAdmin, createCategory);
-router.get("/categories", verifyToken, getCategories);
+// Category Routes (Admin Only)
+router.post('/categories', verifyToken, isAdmin, equipmentController.createCategory);
+router.get('/categories', verifyToken, equipmentController.getCategories);
 
-// Equipment add (regular users can add)
-router.post("/add", verifyToken, addEquipment);
-router.get("/", verifyToken, getEquipment);
+// Equipment Routes
+router.post('/add', verifyToken, isAdmin, equipmentController.addEquipment);
+router.get('/', verifyToken, equipmentController.getAllEquipment);
 
-router.get("/:id/autofill", verifyToken, getAutoFillDetails);
+// Auto-Fill Route (Open to any authenticated user creating a request)
+router.get('/:id/autofill', verifyToken, equipmentController.getAutoFillDetails);
 
 module.exports = router;

@@ -1,28 +1,29 @@
 const db = require('../config/db-connect');
-const { initDB } = require('../models');
+const { initDB } = require('../models/index');
 
-(async () => {
+const resetDatabase = async () => {
     try {
-        console.log('Dropping tables...');
-        const dropOrder = [
-            'maintenance_request',
-            'equipment',
-            'equipment_category',
-            'team_members',
-            'maintenance_team',
-            'users'
-        ];
+        console.log("⏳ Dropping tables...");
+        // Use db.query instead of db.execute for DDL statements
+        await db.query('DROP TABLE IF EXISTS password_resets');
+        await db.query('DROP TABLE IF EXISTS maintenance_request');
+        await db.query('DROP TABLE IF EXISTS equipment');
+        await db.query('DROP TABLE IF EXISTS equipment_category');
+        await db.query('DROP TABLE IF EXISTS team_members');
+        await db.query('DROP TABLE IF EXISTS maintenance_team');
+        await db.query('DROP TABLE IF EXISTS users');
 
-        for (const t of dropOrder) {
-            await new Promise((resolve, reject) => db.query(`DROP TABLE IF EXISTS ${t}`, (err) => err ? reject(err) : resolve()));
-        }
+        console.log("🗑️  All tables dropped.");
 
-        console.log('Reinitializing DB...');
+        // Re-initialize the database
         await initDB();
-        console.log('Done');
-        process.exit(0);
-    } catch (err) {
-        console.error('Failed to reset DB', err);
+
+        console.log("✅ Database reset complete.");
+        process.exit();
+    } catch (error) {
+        console.error("❌ Failed to reset DB Error:", error.message);
         process.exit(1);
     }
-})();
+};
+
+resetDatabase();

@@ -1,15 +1,10 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const { getAllUsers, getProfile, updateProfile } = require("../controllers/userController");
-const { verifyToken, isAdmin } = require("../middlewares/authMiddleware");
+const userController = require('../controllers/userController');
+const { verifyToken } = require('../middlewares/authMiddleware');
 
-// GET /api/users - See all registered users (Admin only)
-router.get("/", verifyToken, isAdmin, getAllUsers);
-
-// GET /api/users/me - profile for current user
-router.get('/me', verifyToken, getProfile);
-
-// PUT /api/users/me - update profile
-router.put('/me', verifyToken, updateProfile);
-
+// Protected Routes
+router.get('/me', verifyToken, userController.getProfile);
+router.get('/', verifyToken, userController.getAllUsers); // Used for assigning equipment
+router.put('/profile', verifyToken, userController.updateProfile);
 module.exports = router;

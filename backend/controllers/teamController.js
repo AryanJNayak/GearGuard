@@ -1,147 +1,95 @@
-const db = require("../config/db-connect");
+const db = require('../config/db-connect');
 
-exports.createTeam = (req, res) => {
-    const { team_name } = req.body;
+// Create a new Maintenance Team
+exports.createTeam = async (req, res) => {
+    try {
+        const { team_name } = req.body;
+        if (!team_name) return res.status(400).json({ message: 'Team name is required' });
 
-    if (!team_name) {
-        return res.status(400).json({ message: "Team name is required" });
-    }
-
-    const sql = "INSERT INTO maintenance_team (team_name) VALUES (?)";
-
-    db.query(sql, [team_name], (err, result) => {
-        if (err) {
-            // Handle duplicate team names
-            if (err.code === 'ER_DUP_ENTRY') {
-                console.log("Team name already exists")
-
-                return res.status(400).json({ message: "Team name already exists" });
-            }
-            return res.status(500).json({ message: "Database error", error: err });
+        const [result] = await db.execute(
+            'INSERT INTO maintenance_team (team_name) VALUES (?)',
+            [team_name]
+        );
+        res.status(201).json({ message: 'Team created', teamId: result.insertId });
+    } catch (error) {
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(400).json({ message: 'Team name already exists' });
         }
-        console.log("Team created successfully!")
-        res.status(201).json({ message: "Team created successfully!", teamId: result.insertId });
-    });
+        res.status(500).json({ message: 'Server Error', error });
+    }
 };
 
-
-exports.addTeamMember = (req, res) => {
+// Add Member to Team (Handles Manager Logic)
+exports.addTeamMember = async (req, res) => {
     const { team_id, user_id, is_manager } = req.body;
 
-    // 1. Validate Input
-    if (!team_id || !user_id) {
-        return res.status(400).json({ message: "Team ID and User ID are required" });
-    }
+    // Start a transaction for data integrity
+    const connection = await db.getConnection();
+    try {
+        await connection.beginTransaction();
 
-    const managerRole = is_manager ? 1 : 0;
+        // 1. Check if user is already in this team
+        const [existingMember] = await connection.execute(
+            'SELECT * FROM team_members WHERE team_id = ? AND user_id = ?',
+            [team_id, user_id]
+        );
 
-    // Check if the user is already a member
-    const checkMemberSql = "SELECT * FROM team_members WHERE team_id = ? AND user_id = ?";
-
-    db.query(checkMemberSql, [team_id, user_id], (err, results) => {
-        if (err) return res.status(500).json({ message: "Database error", error: err });
-
-        if (results.length > 0) {
+        if (existingMember.length > 0) {
             // Update existing member role
-            const updateSql = "UPDATE team_members SET team_manager = ? WHERE team_id = ? AND user_id = ?";
-            db.query(updateSql, [managerRole, team_id, user_id], (err, result) => {
-                if (err) return res.status(500).json({ message: "Database error", error: err });
-                return res.status(200).json({ message: "Member role updated", role: managerRole ? "Manager" : "Technician" });
-            });
+            await connection.execute(
+                'UPDATE team_members SET team_manager = ? WHERE team_id = ? AND user_id = ?',
+                [is_manager, team_id, user_id]
+            );
         } else {
-            // If new member and is manager, demote existing manager first
-            if (managerRole) {
-                const demoteSql = "UPDATE team_members SET team_manager = 0 WHERE team_id = ? AND team_manager = 1";
-                db.query(demoteSql, [team_id], (err) => {
-                    if (err) return res.status(500).json({ message: "Database error", error: err });
-                    // proceed to insert after demotion
-                    insertMember();
-                });
-            } else {
-                insertMember();
+            // 2. Logic: If adding a NEW manager, demote the existing one first
+            if (is_manager) {
+                await connection.execute(
+                    'UPDATE team_members SET team_manager = 0 WHERE team_id = ? AND team_manager = 1',
+                    [team_id]
+                );
             }
+
+            // 3. Insert new member
+            await connection.execute(
+                'INSERT INTO team_members (team_id, user_id, team_manager) VALUES (?, ?, ?)',
+                [team_id, user_id, is_manager]
+            );
         }
-    });
 
-    function insertMember() {
-        const sql = `
-            INSERT INTO team_members (team_id, user_id, team_manager) 
-            VALUES (?, ?, ?)
-        `;
+        await connection.commit();
+        res.json({ message: 'Team member updated successfully' });
 
-        db.query(sql, [team_id, user_id, managerRole], (err, result) => {
-            if (err) {
-                if (err.code === 'ER_DUP_ENTRY') {
-                    return res.status(400).json({ message: "User is already a member of this team" });
-                }
-                return res.status(500).json({ message: "Database error", error: err });
-            }
-
-            res.status(201).json({
-                message: "Member added successfully",
-                role: managerRole ? "Manager" : "Technician"
-            });
-        });
+    } catch (error) {
+        await connection.rollback();
+        console.error("Add Member Error:", error);
+        res.status(500).json({ message: 'Server Error' });
+    } finally {
+        connection.release();
     }
 };
 
-
-// 1. Get all basic teams
-exports.getAllTeams = (req, res) => {
-    const sql = "SELECT * FROM maintenance_team";
-    db.query(sql, (err, results) => {
-        if (err) {
-            return res.status(500).json({ message: "Database error", error: err });
-        }
-        res.status(200).json(results);
-    });
+// Get All Teams
+exports.getAllTeams = async (req, res) => {
+    try {
+        const [teams] = await db.execute('SELECT * FROM maintenance_team');
+        res.json(teams);
+    } catch (error) {
+        res.status(500).json({ message: 'Server Error' });
+    }
 };
 
-// 2. Get all members with their Team Names and User Names
-exports.getAllMembers = (req, res) => {
-    const sql = `
-        SELECT 
-            t.team_name, 
-            u.name AS technician_name, 
-            u.email,
-            tm.team_manager 
-        FROM team_members tm
-        JOIN maintenance_team t ON tm.team_id = t.team_id
-        JOIN users u ON tm.user_id = u.user_id
-        ORDER BY t.team_name ASC;
-    `;
-
-    db.query(sql, (err, results) => {
-        if (err) {
-            return res.status(500).json({ message: "Database error", error: err });
-        }
-        res.status(200).json(results);
-    });
+// Get Members of a Specific Team
+exports.getTeamMembers = async (req, res) => {
+    try {
+        const { teamId } = req.params;
+        const [members] = await db.execute(`
+            SELECT u.user_id, u.name, u.email, tm.team_manager 
+            FROM team_members tm
+            JOIN users u ON tm.user_id = u.user_id
+            WHERE tm.team_id = ?
+        `, [teamId]);
+        res.json(members);
+    } catch (error) {
+        res.status(500).json({ message: 'Server Error' });
+    }
 };
-
-// 3. Get members of a SPECIFIC team by ID
-exports.getMembersByTeamId = (req, res) => {
-    const teamId = req.params.teamId; // Get ID from URL
-
-    const sql = `
-        SELECT 
-            u.user_id, 
-            u.name, 
-            u.email, 
-            tm.team_manager 
-        FROM team_members tm
-        JOIN users u ON tm.user_id = u.user_id
-        WHERE tm.team_id = ?
-    `;
-
-    db.query(sql, [teamId], (err, results) => {
-        if (err) {
-            return res.status(500).json({ message: "Database error", error: err });
-        }
-        if (results.length === 0) {
-            return res.status(404).json({ message: "No members found for this team" });
-        }
-        res.status(200).json(results);
-    });
-};
-

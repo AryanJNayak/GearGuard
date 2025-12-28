@@ -1,59 +1,52 @@
-// --- 1. Imports ---
-const equipmentCategory = require("./equipment-category");
-const user = require("./user");
-const passwordReset = require("./password-reset");
-const equipment = require("./equipment");
-const maintenanceRequest = require("./maintenance-request");
-const maintenanceTeam = require("./maintenance-team");
-const teamMembers = require("./team-members");
-const db = require("../config/db-connect");
+const db = require('../config/db-connect');
 
+// Ensure these files export the raw SQL string (e.g. module.exports = "CREATE TABLE...";)
+const userTable = require('./user');
+const maintenanceTeamTable = require('./maintenance-team');
+const passwordResetTable = require('./password-reset');
+const teamMembersTable = require('./team-members');
+const equipmentCategoryTable = require('./equipment-category');
+const equipmentTable = require('./equipment');
+const maintenanceRequestTable = require('./maintenance-request');
 
-
-// --- 2. Helper: Wrap db.query in a Promise ---
-const runQuery = (sql, tableName) => {
-    return new Promise((resolve, reject) => {
-        db.query(sql, (err) => {
-            if (err) {
-                console.error(`❌ ${tableName} failed:`, err.message);
-                reject(err);
-            } else {
-                console.log(`✅ ${tableName} created`);
-                resolve();
-            }
-        });
-    });
+// FIX: Removed "new Promise" wrapper and callback. Used direct "await".
+const runQuery = async (sql, tableName) => {
+    try {
+        await db.query(sql); // logic: db.query() returns a promise automatically
+        console.log(`✅ ${tableName} created successfully`);
+    } catch (err) {
+        console.error(`❌ ${tableName} failed:`, err.message);
+        throw err; // Stop the process if a table fails
+    }
 };
 
-// --- 3. The Main Execution Function ---
 const initDB = async () => {
     try {
-        console.log("🚀 Starting Database Initialization...");
+        console.log('🚀 Starting Database Initialization...\n');
 
-        // Dependency Level 1: Independent Tables
-        await runQuery(user, "Users");
-        await runQuery(maintenanceTeam, "Maintenance Team");
+        // Level 1: Independent tables
+        await runQuery(userTable, 'Users Table');
+        await runQuery(maintenanceTeamTable, 'Maintenance Team Table');
 
-        // Password reset table depends on users
-        await runQuery(passwordReset, "Password Resets");
+        // Level 2: Depends on users
+        await runQuery(passwordResetTable, 'Password Resets Table');
 
-        // Dependency Level 2: Depends on Users/Teams
-        await runQuery(teamMembers, "Team Members");
+        // Level 3: Depends on users and teams
+        await runQuery(teamMembersTable, 'Team Members Table');
 
-        // Dependency Level 3: Depends on Members
-        await runQuery(equipmentCategory, "Equipment Category");
+        // Level 4: Depends on teams and users
+        await runQuery(equipmentCategoryTable, 'Equipment Category Table');
 
-        // Dependency Level 4: Depends on Category
-        await runQuery(equipment, "Equipment");
+        // Level 5: Depends on category and users
+        await runQuery(equipmentTable, 'Equipment Table');
 
-        // Dependency Level 5: Depends on Equipment & Users
-        await runQuery(maintenanceRequest, "Maintenance Request");
+        // Level 6: Depends on equipment, users, and category
+        await runQuery(maintenanceRequestTable, 'Maintenance Request Table');
 
-        console.log("🎉 All tables created successfully!");
+        console.log('\n🎉 All tables created successfully!');
     } catch (error) {
-        console.error("⚠️ Database initialization stopped due to error.");
-    } finally {
-        // db.end(); // Close connection when done
+        console.error('\n⚠️ Database initialization stopped due to error');
+        process.exit(1);
     }
 };
 

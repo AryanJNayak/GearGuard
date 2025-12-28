@@ -1,30 +1,23 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import { useContext } from 'react';
+import { Navigate } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext';
 
-export default function ProtectedRoute({ children, requiredAdmin = false }) {
-    const token = localStorage.getItem("token");
-    const userStr = localStorage.getItem("user");
+const ProtectedRoute = ({ children, adminOnly = false }) => {
+    const { user, loading } = useContext(AuthContext);
 
-    if (!token) {
-        return (
-            <div className="card">
-                Please{" "}
-                <Link to="/login" className="text-indigo-300">
-                    login
-                </Link>{" "}
-                to access this page
-            </div>
-        );
+    if (loading) return <div className="p-10">Loading...</div>;
+
+    // 1. Not Logged In? -> Go to Login
+    if (!user) {
+        return <Navigate to="/login" replace />;
     }
 
-    if (requiredAdmin) {
-        if (!userStr) return <div className="card">Unauthorized</div>;
-
-        const user = JSON.parse(userStr);
-        if (!user.is_admin) {
-            return <div className="card">Admin access required</div>;
-        }
+    // 2. Admin Route but User is not Admin? -> Go to Dashboard
+    if (adminOnly && !user.is_admin) {
+        return <Navigate to="/dashboard" replace />;
     }
 
     return children;
-}
+};
+
+export default ProtectedRoute;

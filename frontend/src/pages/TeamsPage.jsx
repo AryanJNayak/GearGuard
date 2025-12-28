@@ -1,158 +1,107 @@
-import React, { useEffect, useState } from 'react';
-import { Users, Plus, Search, Briefcase, Building2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import api from '../utils/api';
+import { Plus, Users, ArrowRight } from 'lucide-react';
+import TeamMembersModal from '../components/TeamMembersModal';
 
-export default function TeamsPage() {
-    // --- State ---
-    const [name, setName] = useState('');
+const TeamsPage = () => {
     const [teams, setTeams] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
+    const [newTeamName, setNewTeamName] = useState('');
+    const [selectedTeam, setSelectedTeam] = useState(null); // Controls Modal
+    const [loading, setLoading] = useState(true);
 
-    const token = localStorage.getItem('token');
-
-    // --- Effects ---
-    useEffect(() => {
-        fetchTeams();
-        // eslint-disable-next-line
-    }, []);
-
-    // --- API Handlers ---
+    // Fetch Teams
     const fetchTeams = async () => {
         try {
-            const res = await fetch('/api/teams', { headers: { Authorization: `Bearer ${token}` } });
-            if (res.ok) {
-                const data = await res.json();
-                setTeams(data);
-            }
-        } catch (e) {
-            console.error("Failed to fetch teams", e);
-        }
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        if (!name.trim()) return;
-
-        setLoading(true);
-        try {
-            const res = await fetch('/api/teams', {
-                method: 'POST',
-                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ team_name: name })
-            });
-            const d = await res.json();
-            if (res.ok) {
-                setName('');
-                fetchTeams();
-            } else {
-                alert(d.message || 'Error creating team');
-            }
-        } catch (e) {
-            alert('Connection error');
+            const { data } = await api.get('/teams');
+            setTeams(data);
+        } catch (error) {
+            console.error("Error fetching teams", error);
         } finally {
             setLoading(false);
         }
     };
 
-    // --- Filter Logic ---
-    const filteredTeams = teams.filter(t =>
-        t.team_name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    useEffect(() => {
+        fetchTeams();
+    }, []);
+
+    // Create Team
+    const handleCreateTeam = async (e) => {
+        e.preventDefault();
+        if (!newTeamName.trim()) return;
+
+        try {
+            await api.post('/teams/create', { team_name: newTeamName });
+            setNewTeamName('');
+            fetchTeams(); // Refresh list
+        } catch (error) {
+            alert(error.response?.data?.message || 'Failed to create team');
+        }
+    };
 
     return (
-        <div className="space-y-8">
-            {/* 1. Page Header */}
-            <div className="flex items-center gap-3">
-                <div className="bg-indigo-600 p-2 rounded-lg shadow-sm">
-                    <Users className="text-white w-6 h-6" />
-                </div>
+        <div className="space-y-6">
+
+            {/* Page Header */}
+            <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Teams</h1>
-                    <p className="text-gray-500 text-sm">Manage departments and operational groups.</p>
+                    <h1 className="text-2xl font-bold text-gray-800">Team Management</h1>
+                    <p className="text-gray-500 text-sm">Create maintenance teams and assign managers.</p>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Create Team Form */}
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                <form onSubmit={handleCreateTeam} className="flex gap-4 items-end">
+                    <div className="flex-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">New Team Name</label>
+                        <input
+                            type="text"
+                            placeholder="e.g., Electrical Maintenance"
+                            className="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            value={newTeamName}
+                            onChange={(e) => setNewTeamName(e.target.value)}
+                        />
+                    </div>
+                    <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2">
+                        <Plus size={18} /> Create Team
+                    </button>
+                </form>
+            </div>
 
-                {/* 2. Create Team Form (Left Column) */}
-                <div className="lg:col-span-1">
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sticky top-24">
-                        <h2 className="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">
-                            <Plus size={18} className="text-indigo-600" />
-                            Create Team
-                        </h2>
-                        <p className="text-sm text-gray-500 mb-6">Add a new department to your organization.</p>
-
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Team Name</label>
-                                <div className="relative">
-                                    <Building2 className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
-                                    <input
-                                        className="w-full pl-9 rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900 placeholder-gray-400"
-                                        placeholder="e.g. Engineering, Logistics"
-                                        value={name}
-                                        onChange={(e) => setName(e.target.value)}
-                                    />
+            {/* Teams Grid */}
+            {loading ? <div>Loading teams...</div> : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {teams.map(team => (
+                        <div key={team.team_id} className="bg-white p-5 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="p-3 bg-blue-100 text-blue-600 rounded-lg">
+                                    <Users size={24} />
                                 </div>
+                                <h3 className="font-bold text-lg text-gray-800">{team.team_name}</h3>
                             </div>
 
                             <button
-                                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg shadow-sm transition-all active:scale-95 flex justify-center items-center gap-2"
-                                type="submit"
-                                disabled={loading}
+                                onClick={() => setSelectedTeam(team)}
+                                className="w-full py-2 px-4 bg-gray-50 text-blue-600 font-medium rounded border border-gray-200 hover:bg-blue-50 hover:border-blue-300 flex justify-between items-center group"
                             >
-                                {loading ? 'Creating...' : 'Add Team'}
+                                Manage Members
+                                <ArrowRight size={16} className="text-gray-400 group-hover:text-blue-600" />
                             </button>
-                        </form>
-                    </div>
+                        </div>
+                    ))}
                 </div>
+            )}
 
-                {/* 3. Team List (Right Column) */}
-                <div className="lg:col-span-2 space-y-4">
-
-                    {/* Search Bar */}
-                    <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center gap-3">
-                        <Search className="text-gray-400 w-5 h-5" />
-                        <input
-                            type="text"
-                            placeholder="Search teams..."
-                            className="flex-1 border-none focus:ring-0 text-sm text-gray-900 placeholder-gray-400"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-
-                    {/* Team Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {filteredTeams.map(t => (
-                            <div key={t.team_id} className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-indigo-100 transition-all group cursor-default">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className="bg-blue-50 text-blue-600 p-3 rounded-lg group-hover:bg-blue-100 group-hover:scale-110 transition-all">
-                                            <Briefcase size={20} />
-                                        </div>
-                                        <div>
-                                            <h3 className="font-semibold text-gray-900 text-lg">{t.team_name}</h3>
-                                            <p className="text-xs text-gray-500">Active Team</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-
-                        {filteredTeams.length === 0 && (
-                            <div className="col-span-full bg-white rounded-xl border border-gray-100 border-dashed p-10 text-center">
-                                <div className="mx-auto w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-3">
-                                    <Search className="text-gray-400 w-6 h-6" />
-                                </div>
-                                <h3 className="text-gray-900 font-medium">No teams found</h3>
-                                <p className="text-gray-500 text-sm mt-1">Try creating a new one or adjust your search.</p>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
+            {/* Modal for Managing Members */}
+            {selectedTeam && (
+                <TeamMembersModal
+                    team={selectedTeam}
+                    onClose={() => setSelectedTeam(null)}
+                />
+            )}
         </div>
     );
-}
+};
+
+export default TeamsPage;

@@ -1,18 +1,18 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const { createRequest, getAllRequests, getTeamRequests, updateStatus } = require("../controllers/requestController");
-const { verifyToken, isAdmin } = require("../middlewares/authMiddleware");
+const requestController = require('../controllers/requestController');
+const { verifyToken, isAdmin } = require('../middlewares/authMiddleware');
 
-// Route: POST /api/requests/add (any logged-in user can create)
-router.post("/add", createRequest);
+// 1. Create Request (Any logged-in user)
+router.post('/add', verifyToken, requestController.createRequest);
 
-// Admin-only: see all requests
-router.get("/", isAdmin, getAllRequests);
+// 2. View All Requests (Admin Only)
+router.get('/', verifyToken, isAdmin, requestController.getAllRequests);
 
-// Get team requests - protected; controller will enforce user or admin
-router.get("/my-team/:user_id", getTeamRequests);
+// 3. View My Team's Requests (Team Members)
+router.get('/my-team', verifyToken, requestController.getTeamRequests);
 
-// Update status - only admin or technician? For now, require verifyToken & isAdmin
-router.post("/status/", updateStatus);
-
+// 4. Update Status (Protected by internal controller logic)
+router.post('/status', verifyToken, requestController.updateStatus);
+router.get('/stats', verifyToken, requestController.getDashboardStats);
 module.exports = router;

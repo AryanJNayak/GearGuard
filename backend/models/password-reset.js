@@ -1,5 +1,3 @@
-const db = require("../config/db-connect");
-
 const createPasswordResetTable = `
 CREATE TABLE IF NOT EXISTS password_resets (
     id INT AUTO_INCREMENT PRIMARY KEY,

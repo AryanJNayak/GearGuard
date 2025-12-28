@@ -4,7 +4,9 @@
   "description": "This is  The Ultimate Maintenance Tracker application",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon index.js"
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "init-db": "node tools/reset-db.js"
   },
   "author": "Aryan",
   "license": "ISC",

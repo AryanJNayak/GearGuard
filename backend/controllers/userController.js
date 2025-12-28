@@ -1,44 +1,72 @@
-const db = require("../config/db-connect");
+const db = require('../config/db-connect');
 
-exports.getAllUsers = (req, res) => {
-    // Select everything EXCEPT the password
-    const sql = "SELECT user_id, name, email, is_admin FROM users";
+// Get current user profile
+exports.getProfile = async (req, res) => {
+    try {
+        // req.user.id comes from the verifyToken middleware
+        const [users] = await db.execute(
+            'SELECT user_id, name, email, is_admin FROM users WHERE user_id = ?',
+            [req.user.id]
+        );
 
-    db.query(sql, (err, results) => {
-        if (err) {
-            return res.status(500).json({ message: "Database error", error: err });
-        }
-        res.status(200).json(results);
-    });
+        if (users.length === 0) return res.status(404).json({ message: 'User not found' });
+
+        res.json(users[0]);
+    } catch (error) {
+        res.status(500).json({ message: 'Server Error' });
+    }
 };
 
-// GET /api/users/me
-exports.getProfile = (req, res) => {
-    const userId = req.user && req.user.id;
-    if (!userId) return res.status(403).json({ message: 'Not authenticated' });
-
-    const sql = 'SELECT user_id, name, email, is_admin FROM users WHERE user_id = ?';
-    db.query(sql, [userId], (err, results) => {
-        if (err) return res.status(500).json({ message: 'Database error', error: err });
-        if (results.length === 0) return res.status(404).json({ message: 'User not found' });
-        res.status(200).json(results[0]);
-    });
+// Get All Users (For Admin Dropdowns)
+exports.getAllUsers = async (req, res) => {
+    try {
+        const [users] = await db.execute('SELECT user_id, name, email FROM users');
+        res.json(users);
+    } catch (error) {
+        res.status(500).json({ message: 'Server Error' });
+    }
 };
 
-// PUT /api/users/me
-exports.updateProfile = (req, res) => {
-    const userId = req.user && req.user.id;
-    if (!userId) return res.status(403).json({ message: 'Not authenticated' });
+exports.updateProfile = async (req, res) => {
+    try {
+        const userId = req.user.id; // From middleware
+        const { name, email, password } = req.body;
 
-    const { name, email } = req.body;
-    if (!name && !email) return res.status(400).json({ message: 'Nothing to update' });
-
-    const sql = 'UPDATE users SET name = COALESCE(?, name), email = COALESCE(?, email) WHERE user_id = ?';
-    db.query(sql, [name || null, email || null, userId], (err, result) => {
-        if (err) {
-            if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ message: 'Email already in use' });
-            return res.status(500).json({ message: 'Database error', error: err });
+        // 1. Validation: Check if email is already taken by ANOTHER user
+        const [existing] = await db.query(
+            'SELECT * FROM users WHERE email = ? AND user_id != ?',
+            [email, userId]
+        );
+        if (existing.length > 0) {
+            return res.status(400).json({ message: 'Email is already in use by another account.' });
         }
-        res.status(200).json({ message: 'Profile updated' });
-    });
+
+        // 2. Prepare Update Query
+        let query = 'UPDATE users SET name = ?, email = ?';
+        let params = [name, email];
+
+        // 3. Handle Password Update (Only if provided)
+        if (password && password.trim() !== "") {
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(password, salt);
+            query += ', password = ?';
+            params.push(hashedPassword);
+        }
+
+        // 4. Finalize Query
+        query += ' WHERE user_id = ?';
+        params.push(userId);
+
+        await db.query(query, params);
+
+        // 5. Return updated user info (excluding password)
+        res.json({
+            message: 'Profile updated successfully',
+            user: { id: userId, name, email, is_admin: req.user.is_admin }
+        });
+
+    } catch (error) {
+        console.error("Update Profile Error:", error);
+        res.status(500).json({ message: 'Server Error' });
+    }
 };
