@@ -93,3 +93,7 @@ This project implements specific logic found in Odoo's Maintenance module:
     *App should run on `http://localhost:5173`*
 
 ---
+
+# Members
+**Aryan Nayak**: aryannayak1509@gmail.com and 
+**Himanshu Prajapati**: himanshuprajapati4695@gmail.com
