@@ -48,3 +48,11 @@ This project "GearGuard: The Ultimate Maintenance Tracker" is part of Odoo X Ada
 
 
   - Data: Captures schedule_date and duration for reporting.
+
+---
+Authors: 
+name: aryan
+email: aryannayak1509@gmail.com
+
+name: Himanshu 
+email: himanshuprajapati4695@gmail.com
